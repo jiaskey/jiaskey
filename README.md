@@ -76,6 +76,7 @@ python web_ui.py
 
 UI 提供：
 - 单股票预测（支持手动 news 或 ticker 拉取）
+- 过程看板（输入准备→实体提取→图谱构建→智能体模拟→报告输出）
 - 组合预测（JSON 输入多股票新闻）
 
 ## CLI 运行示例
@@ -108,9 +109,9 @@ python web_ui.py
 - 在“组合预测”里粘贴 JSON（如 `{"AAPL": "positive growth", "TSLA": "decline risk"}`）点击运行。
 
 4. **API 演示（便于录屏/自动化）**
-新开一个终端，执行：
+新开一个终端，执行（结构化流程结果）：
 ```bash
-curl -s http://localhost:8000/api/predict \
+curl -s http://localhost:8000/api/process \
   -H 'Content-Type: application/json' \
   -d '{"news":"公司A积极财报，盈利增长","num_agents":5,"steps":10}'
 ```

@@ -327,6 +327,53 @@ def predict_portfolio(
     return results
 
 
+def predict_stock_detailed(
+    news: str | None = None,
+    num_agents: int = 5,
+    steps: int = 10,
+    disturb_prob: float = 0.2,
+    seed: int | None = 42,
+    lang: str = "zh",
+    ticker: str | None = None,
+    news_provider: str = "polygon",
+    api_key: str | None = None,
+) -> dict[str, Any]:
+    """返回结构化过程数据，供前端过程可视化使用。"""
+    if news is None:
+        if not ticker:
+            raise ValueError("either news or ticker must be provided")
+        news = fetch_real_time_news(ticker=ticker, provider=news_provider, api_key=api_key)
+
+    entities = extract_entities(news)
+    graph = build_graph(news)
+    agents = create_agents(num_agents)
+    env = configure_environment({"steps": steps, "disturb_prob": disturb_prob, "seed": seed})
+    posterior, step_series = simulate(agents, graph, env)
+    report = generate_report(posterior, step_series=step_series, lang=lang)
+
+    edge_weights = [d.get("weight", 0.5) for _, _, d in graph.edges(data=True)]
+    likelihood = sum(edge_weights) / len(edge_weights) if edge_weights else 0.5
+    trend = "上涨" if posterior > 0.5 else "下跌"
+
+    process = [
+        {"name": "输入准备", "status": "done", "detail": f"输入长度 {len(news)} 字符"},
+        {"name": "实体提取", "status": "done", "detail": ", ".join(entities)},
+        {"name": "图谱构建", "status": "done", "detail": f"边数量 {graph.number_of_edges()}，似然 {likelihood:.2f}"},
+        {"name": "智能体模拟", "status": "done", "detail": f"agents={num_agents}, steps={steps}"},
+        {"name": "报告输出", "status": "done", "detail": f"{trend} ({posterior:.2f})"},
+    ]
+
+    return {
+        "report": report,
+        "posterior": posterior,
+        "trend": trend,
+        "entities": entities,
+        "step_series": step_series,
+        "emotion_curve": render_emotion_curve(step_series),
+        "process": process,
+    }
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     print(predict_stock(news="公司A发布积极财报，盈利增长，市场预期上调。", num_agents=5, steps=10))

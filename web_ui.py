@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from stock_simulation import predict_portfolio, predict_stock
+from stock_simulation import predict_portfolio, predict_stock_detailed
 
 UI_DIR = Path(__file__).resolve().parent / "ui"
 
@@ -30,7 +30,7 @@ def predict_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
     disturb_prob = float(payload.get("disturb_prob", 0.2))
     seed = payload.get("seed", 42)
 
-    report = predict_stock(
+    detail = predict_stock_detailed(
         news=news,
         ticker=ticker,
         num_agents=num_agents,
@@ -41,7 +41,7 @@ def predict_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
         api_key=payload.get("api_key"),
         lang=str(payload.get("lang", "zh")),
     )
-    return {"ok": True, "report": report}
+    return {"ok": True, **detail}
 
 
 def portfolio_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -78,17 +78,17 @@ class UIHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(content_length) or b"{}")
 
-            if self.path == "/api/predict":
+            if self.path in ("/api/predict", "/api/process"):
                 _json_response(self, predict_from_payload(payload))
                 return
             if self.path == "/api/portfolio":
                 _json_response(self, portfolio_from_payload(payload))
                 return
             _json_response(self, {"ok": False, "error": "Not found"}, status=404)
-        except Exception as exc:  # safe API boundary
+        except Exception as exc:
             _json_response(self, {"ok": False, "error": str(exc)}, status=400)
 
-    def log_message(self, format: str, *args: Any) -> None:  # silence default noisy logs
+    def log_message(self, format: str, *args: Any) -> None:
         return
 
 

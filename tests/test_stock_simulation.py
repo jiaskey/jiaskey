@@ -13,6 +13,7 @@ from stock_simulation import (
     generate_report,
     predict_portfolio,
     predict_stock,
+    predict_stock_detailed,
     render_emotion_curve,
     simulate,
     validate_with_history,
@@ -147,3 +148,11 @@ def test_predict_portfolio_multi_ticker():
     result = predict_portfolio({"AAPL": "positive growth", "TSLA": "decline risk"}, steps=5)
     assert set(result.keys()) == {"AAPL", "TSLA"}
     assert all(0 <= value <= 1 for value in result.values())
+
+
+def test_predict_stock_detailed_contains_process_fields():
+    detail = predict_stock_detailed(news="公司A积极财报，市场增长", num_agents=4, steps=6, seed=7)
+    assert "report" in detail
+    assert "process" in detail
+    assert len(detail["process"]) >= 5
+    assert 0 <= detail["posterior"] <= 1
