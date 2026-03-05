@@ -153,3 +153,7 @@ pytest -q
 
 ## 开发文档
 - 详见 `DEVELOPMENT_DOC.md`（代码反推与架构说明）。
+
+
+## 上传到 GitHub
+- 详见 `GITHUB_UPLOAD.md`（含完整命令与常见错误处理）。
