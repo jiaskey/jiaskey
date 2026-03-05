@@ -149,3 +149,7 @@ pytest -q
 - `ui/index.html`：前端页面（表单 + 调用 API）
 - `tests/test_stock_simulation.py`：单元与集成测试
 - `tests/test_web_ui.py`：UI API 载荷转换测试
+
+
+## 开发文档
+- 详见 `DEVELOPMENT_DOC.md`（代码反推与架构说明）。
