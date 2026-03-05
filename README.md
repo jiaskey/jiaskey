@@ -83,6 +83,50 @@ UI 提供：
 python stock_simulation.py
 ```
 
+
+## 如何演示该系统（推荐流程）
+1. **准备环境**
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. **命令行快速演示（离线）**
+```bash
+python stock_simulation.py
+```
+你会看到一段中文预测报告（趋势概率 + 情绪曲线）。
+
+3. **启动 Web UI 演示（最直观）**
+```bash
+python web_ui.py
+```
+然后打开浏览器访问 `http://localhost:8000`：
+- 在“单股票预测”里直接填新闻，点击“运行预测”。
+- 或者留空新闻，填 `ticker` + provider（`yfinance`/`polygon`）进行实时新闻模式。
+- 在“组合预测”里粘贴 JSON（如 `{"AAPL": "positive growth", "TSLA": "decline risk"}`）点击运行。
+
+4. **API 演示（便于录屏/自动化）**
+新开一个终端，执行：
+```bash
+curl -s http://localhost:8000/api/predict \
+  -H 'Content-Type: application/json' \
+  -d '{"news":"公司A积极财报，盈利增长","num_agents":5,"steps":10}'
+```
+
+组合预测示例：
+```bash
+curl -s http://localhost:8000/api/portfolio \
+  -H 'Content-Type: application/json' \
+  -d '{"news_map":{"AAPL":"positive growth","TSLA":"decline risk"},"steps":8}'
+```
+
+5. **验证演示环境**
+```bash
+pytest -q
+```
+
 ## 测试
 ```bash
 pytest -q
