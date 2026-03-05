@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiroFish 风格模拟控制台</title>
+  <style>
+    :root { --bg:#0b1020; --panel:#131a2e; --line:#2d385f; --text:#e8eeff; --muted:#9fb0df; --acc:#4f8cff; --ok:#39d98a; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:linear-gradient(180deg,#0b1020,#0f1730); color:var(--text); font-family: Inter, Arial, sans-serif; }
+    .wrap { max-width:1200px; margin:24px auto; padding:0 16px; }
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .badge { border:1px solid var(--line); border-radius:999px; padding:6px 10px; color:var(--muted); font-size:12px; }
+    .layout { display:grid; grid-template-columns: 360px 1fr; gap:14px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    h1,h2,h3 { margin:0 0 10px; }
+    h1 { font-size:22px; }
+    h2 { font-size:16px; color:#cfe0ff; }
+    label { display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input,select,textarea,button { width:100%; border-radius:10px; border:1px solid var(--line); background:#0d1430; color:var(--text); padding:8px 10px; }
+    textarea { min-height:90px; }
+    button { background:var(--acc); border:none; font-weight:600; cursor:pointer; margin-top:10px; }
+    .tabs { display:flex; gap:8px; margin-bottom:8px; }
+    .tab { padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); cursor:pointer; }
+    .tab.active { background:#1d2a52; color:#fff; border-color:#4967c6; }
+    .hidden { display:none; }
+    .process { list-style:none; margin:0; padding:0; }
+    .process li { padding:10px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:#0d1430; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .metric { border:1px solid var(--line); border-radius:10px; padding:10px; background:#0d1430; }
+    .muted { color:var(--muted); }
+    pre { white-space:pre-wrap; background:#0d1430; border:1px solid var(--line); border-radius:10px; padding:10px; }
+    .curve { font-size:28px; letter-spacing:2px; color:var(--ok); }
+    @media (max-width: 980px) { .layout { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Stock Simulation Console</h1>
+      <div class="badge">娱乐级预测 · 非投资建议</div>
+    </div>
+
+    <div class="layout">
+      <div class="panel">
+        <div class="tabs">
+          <div id="tabSingle" class="tab active">单票流程</div>
+          <div id="tabPortfolio" class="tab">组合预测</div>
+        </div>
+
+        <div id="singleForm">
+          <label>新闻文本（可空，改用 ticker 拉取）</label>
+          <textarea id="news" placeholder="公司A发布积极财报，盈利增长"></textarea>
+          <label>Ticker（可选）</label>
+          <input id="ticker" placeholder="AAPL" />
+          <label>Provider</label>
+          <select id="provider"><option value="yfinance">yfinance</option><option value="polygon">polygon</option></select>
+          <label>API Key（polygon）</label>
+          <input id="apiKey" placeholder="YOUR_POLYGON_KEY" />
+          <div class="row">
+            <div><label>智能体</label><input id="numAgents" type="number" value="5" min="1" /></div>
+            <div><label>步数</label><input id="steps" type="number" value="10" min="1" /></div>
+          </div>
+          <div class="row">
+            <div><label>扰动概率</label><input id="disturb" type="number" value="0.2" min="0" max="1" step="0.05" /></div>
+            <div><label>语言</label><select id="lang"><option value="zh">中文</option><option value="en">English</option></select></div>
+          </div>
+          <button id="runSingle">运行流程</button>
+        </div>
+
+        <div id="portfolioForm" class="hidden">
+          <label>组合 JSON（ticker -> news）</label>
+          <textarea id="portfolioInput">{"AAPL":"positive growth and profit","TSLA":"delivery risk and decline"}</textarea>
+          <div class="row">
+            <div><label>智能体</label><input id="pAgents" type="number" value="5" min="1" /></div>
+            <div><label>步数</label><input id="pSteps" type="number" value="10" min="1" /></div>
+          </div>
+          <button id="runPortfolio">运行组合</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>流程看板</h2>
+        <ul id="processBoard" class="process">
+          <li>等待运行...</li>
+        </ul>
+
+        <h2>核心指标</h2>
+        <div class="row">
+          <div class="metric"><div class="muted">趋势</div><div id="trend">-</div></div>
+          <div class="metric"><div class="muted">后验概率</div><div id="posterior">-</div></div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div class="metric"><div class="muted">实体</div><div id="entities">-</div></div>
+          <div class="metric"><div class="muted">情绪曲线</div><div id="curve" class="curve">-</div></div>
+        </div>
+
+        <h2>报告输出</h2>
+        <pre id="report">等待运行...</pre>
+
+        <h2>组合结果</h2>
+        <pre id="portfolioOutput">等待运行...</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tabSingle = document.getElementById('tabSingle');
+    const tabPortfolio = document.getElementById('tabPortfolio');
+    const singleForm = document.getElementById('singleForm');
+    const portfolioForm = document.getElementById('portfolioForm');
+
+    tabSingle.onclick = () => {
+      tabSingle.classList.add('active'); tabPortfolio.classList.remove('active');
+      singleForm.classList.remove('hidden'); portfolioForm.classList.add('hidden');
+    };
+    tabPortfolio.onclick = () => {
+      tabPortfolio.classList.add('active'); tabSingle.classList.remove('active');
+      portfolioForm.classList.remove('hidden'); singleForm.classList.add('hidden');
+    };
+
+    async function postJson(url, data) {
+      const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+      return resp.json();
+    }
+
+    function renderProcess(list) {
+      const board = document.getElementById('processBoard');
+      board.innerHTML = '';
+      if (!list || !list.length) {
+        board.innerHTML = '<li>无流程数据</li>';
+        return;
+      }
+      list.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${item.name}</strong><br><span class="muted">${item.detail}</span>`;
+        board.appendChild(li);
+      });
+    }
+
+    document.getElementById('runSingle').onclick = async () => {
+      const payload = {
+        news: document.getElementById('news').value || null,
+        ticker: document.getElementById('ticker').value || null,
+        news_provider: document.getElementById('provider').value,
+        api_key: document.getElementById('apiKey').value || null,
+        num_agents: Number(document.getElementById('numAgents').value),
+        steps: Number(document.getElementById('steps').value),
+        disturb_prob: Number(document.getElementById('disturb').value),
+        lang: document.getElementById('lang').value,
+      };
+      const res = await postJson('/api/process', payload);
+      if (!res.ok) {
+        document.getElementById('report').textContent = `错误: ${res.error}`;
+        return;
+      }
+      document.getElementById('report').textContent = res.report;
+      document.getElementById('trend').textContent = res.trend;
+      document.getElementById('posterior').textContent = Number(res.posterior).toFixed(4);
+      document.getElementById('entities').textContent = (res.entities || []).join(', ') || '-';
+      document.getElementById('curve').textContent = res.emotion_curve || '-';
+      renderProcess(res.process);
+    };
+
+    document.getElementById('runPortfolio').onclick = async () => {
+      let map;
+      try { map = JSON.parse(document.getElementById('portfolioInput').value); }
+      catch (e) {
+        document.getElementById('portfolioOutput').textContent = 'JSON 格式错误';
+        return;
+      }
+      const payload = {
+        news_map: map,
+        num_agents: Number(document.getElementById('pAgents').value),
+        steps: Number(document.getElementById('pSteps').value)
+      };
+      const res = await postJson('/api/portfolio', payload);
+      document.getElementById('portfolioOutput').textContent = res.ok ? JSON.stringify(res.result, null, 2) : `错误: ${res.error}`;
+    };
+  </script>
+</body>
+</html>
