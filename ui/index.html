@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>股票模拟预测系统 UI</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    h1 { margin-bottom: 8px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 16px 0; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    label { font-size: 14px; color: #444; display: block; margin-bottom: 6px; }
+    input, select, textarea, button { width: 100%; padding: 8px; box-sizing: border-box; }
+    textarea { min-height: 90px; }
+    button { cursor: pointer; border: none; border-radius: 8px; background: #1f6feb; color: white; }
+    pre { background: #f6f8fa; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+    .muted { color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>股票模拟预测系统</h1>
+  <p class="muted">娱乐级系统，仅供思想实验，不构成投资建议。</p>
+
+  <div class="card">
+    <h2>单股票预测</h2>
+    <div class="grid">
+      <div>
+        <label>新闻文本（可留空并使用 ticker 拉取）</label>
+        <textarea id="news" placeholder="例如：公司A发布积极财报，盈利增长"></textarea>
+      </div>
+      <div>
+        <label>Ticker（可选）</label>
+        <input id="ticker" placeholder="AAPL" />
+        <label>数据源</label>
+        <select id="provider"><option value="polygon">polygon</option><option value="yfinance">yfinance</option></select>
+        <label>API Key（polygon 需要）</label>
+        <input id="apiKey" placeholder="YOUR_POLYGON_KEY" />
+      </div>
+      <div><label>智能体数量</label><input id="numAgents" type="number" value="5" min="1" /></div>
+      <div><label>步数</label><input id="steps" type="number" value="10" min="1" /></div>
+      <div><label>扰动概率</label><input id="disturb" type="number" value="0.2" min="0" max="1" step="0.05" /></div>
+      <div><label>语言</label><select id="lang"><option value="zh">中文</option><option value="en">English</option></select></div>
+    </div>
+    <p><button id="predictBtn">运行预测</button></p>
+    <pre id="predictOutput">等待运行...</pre>
+  </div>
+
+  <div class="card">
+    <h2>组合预测</h2>
+    <label>JSON 输入（ticker -> news）</label>
+    <textarea id="portfolioInput">{"AAPL": "positive growth and profit", "TSLA": "delivery risk and decline"}</textarea>
+    <div class="grid">
+      <div><label>智能体数量</label><input id="pAgents" type="number" value="5" min="1" /></div>
+      <div><label>步数</label><input id="pSteps" type="number" value="10" min="1" /></div>
+    </div>
+    <p><button id="portfolioBtn">运行组合预测</button></p>
+    <pre id="portfolioOutput">等待运行...</pre>
+  </div>
+
+  <script>
+    async function postJson(url, data) {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return resp.json();
+    }
+
+    document.getElementById('predictBtn').onclick = async () => {
+      const data = {
+        news: document.getElementById('news').value || null,
+        ticker: document.getElementById('ticker').value || null,
+        news_provider: document.getElementById('provider').value,
+        api_key: document.getElementById('apiKey').value || null,
+        num_agents: Number(document.getElementById('numAgents').value),
+        steps: Number(document.getElementById('steps').value),
+        disturb_prob: Number(document.getElementById('disturb').value),
+        lang: document.getElementById('lang').value,
+      };
+      const result = await postJson('/api/predict', data);
+      document.getElementById('predictOutput').textContent = result.ok ? result.report : `错误: ${result.error}`;
+    };
+
+    document.getElementById('portfolioBtn').onclick = async () => {
+      let map;
+      try { map = JSON.parse(document.getElementById('portfolioInput').value); }
+      catch (e) {
+        document.getElementById('portfolioOutput').textContent = 'JSON 格式错误';
+        return;
+      }
+      const data = {
+        news_map: map,
+        num_agents: Number(document.getElementById('pAgents').value),
+        steps: Number(document.getElementById('pSteps').value)
+      };
+      const result = await postJson('/api/portfolio', data);
+      document.getElementById('portfolioOutput').textContent = result.ok ? JSON.stringify(result.result, null, 2) : `错误: ${result.error}`;
+    };
+  </script>
+</body>
+</html>
